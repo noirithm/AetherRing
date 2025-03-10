@@ -1,0 +1,33 @@
+# Docker (local toolchain image, not tracked)
+docker/
+
+# Build directories
+build/
+cmake-build-*/
+
+# CMake-generated files (if configured in-source by accident)
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# FetchContent-downloaded dependencies (GoogleTest, Benchmark source)
+_deps/
+
+# Compiled binaries/objects
+*.o
+*.obj
+*.exe
+*.out
+*.a
+*.so
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS cruft
+.DS_Store
