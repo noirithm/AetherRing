@@ -2,40 +2,47 @@
 #include <benchmark/benchmark.h>
 #include <thread>
 #include <atomic>
+#include <chrono>
 
 using namespace aether;
 
-// Measures raw push/pop throughput: how fast can one thread push,
-// one thread pop, continuously, for the benchmark's duration.
 static void BM_RingThroughput(benchmark::State& state) {
     for (auto _ : state) {
         SpscRing<int, 1024> ring;
         std::atomic<bool> stop{false};
+        std::atomic<long> produced{0};
 
         std::thread producer([&]() {
             int i = 0;
             while (!stop.load(std::memory_order_relaxed)) {
-                if (ring.try_push(i)) i++;
+                if (ring.try_push(i)) {
+                    i++;
+                    produced.fetch_add(1, std::memory_order_relaxed);
+                }
             }
         });
 
         std::thread consumer([&]() {
-            int count = 0;
-            while (count < 100000) {
-                if (ring.try_pop()) count++;
+            while (!stop.load(std::memory_order_relaxed)) {
+                ring.try_pop();
             }
-            stop.store(true, std::memory_order_relaxed);
         });
 
+        auto start = std::chrono::high_resolution_clock::now();
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        stop.store(true, std::memory_order_relaxed);
         producer.join();
         consumer.join();
+        auto end = std::chrono::high_resolution_clock::now();
+
+        double elapsed_seconds = std::chrono::duration<double>(end - start).count();
+        state.SetIterationTime(elapsed_seconds);
+        state.counters["items_per_second"] =
+            benchmark::Counter(static_cast<double>(produced.load()), benchmark::Counter::kIsRate);
     }
 }
-BENCHMARK(BM_RingThroughput)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_RingThroughput)->Unit(benchmark::kMillisecond)->UseManualTime()->Iterations(1);
 
-// Measures round-trip latency: thread A pushes to ring_a2b, waits for
-// thread B to pop it and push a reply on ring_b2a, then A pops that reply.
-// This is the "ping-pong" pattern - one full round trip per iteration.
 static void BM_RingPingPongLatency(benchmark::State& state) {
     SpscRing<int, 8> ring_a2b;
     SpscRing<int, 8> ring_b2a;
