@@ -28,3 +28,4 @@ pkg_check_modules(URING REQUIRED IMPORTED_TARGET liburing>=2.8)
 
 add_subdirectory(tests)
 add_subdirectory(bench)
+add_subdirectory(arena)
