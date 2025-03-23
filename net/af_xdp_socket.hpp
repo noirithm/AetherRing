@@ -94,6 +94,7 @@ public:
     }
 
     int fd() const { return sock_fd_; }
+    void* umem_base() const { return umem_area_; }
 
 private:
     int sock_fd_ = -1;
