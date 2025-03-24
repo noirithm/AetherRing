@@ -24,6 +24,8 @@ public:
     // Polls the RX ring for available packets, calling on_packet for each.
     // Returns the number of packets actually processed (may be 0, this
     // is non-blocking -- caller decides whether/how to wait or retry).
+    int socket_fd() const { return socket_.fd(); }
+
     std::size_t poll_once(const std::function<void(const uint8_t*, std::size_t)>& on_packet) {
         uint32_t rx_cons = rx_.consumer->load(std::memory_order_acquire);
         uint32_t rx_prod = rx_.producer->load(std::memory_order_acquire);
