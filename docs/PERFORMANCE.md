@@ -1,0 +1,33 @@
+# AetherRing — Performance Notes
+
+Numbers below are from this machine; absolute values aren't portable
+across hardware, but the relative before/after delta from each tuning
+step is the useful signal. Each section is appended by the weeks 9-10
+autoplan script, in order, so this file doubles as a dated log.
+
+## Baseline (pre-tuning)
+
+Captured 2026-10-14T04:45:07Z.
+
+```
+
+ Performance counter stats for './build/bench/ring_bench':
+
+     1,005,654,398      cpu_atom/cycles/u                                                       (5.33%)
+     4,112,826,634      cpu_core/cycles/u                                                       (97.57%)
+       859,635,791      cpu_atom/instructions/u                                                 (5.33%)
+     5,812,041,193      cpu_core/instructions/u                                                 (97.57%)
+         7,810,561      cpu_atom/cache-references/u                                             (5.33%)
+        24,544,606      cpu_core/cache-references/u                                             (97.57%)
+             2,064      cpu_atom/cache-misses/u                                                 (5.33%)
+            15,098      cpu_core/cache-misses/u                                                 (97.57%)
+           510,040      cpu_atom/branch-misses/u                                                (5.33%)
+         2,884,767      cpu_core/branch-misses/u                                                (97.57%)
+
+       0.857245160 seconds time elapsed
+
+       1.691515000 seconds user
+       0.007960000 seconds sys
+
+
+```
