@@ -31,3 +31,38 @@ Captured 2026-10-14T04:45:07Z.
 
 
 ```
+
+## Hotspots (perf record -g, ring_bench)
+
+```
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 198  of event 'cpu_atom/cycles/Pu'
+# Event count (approx.): 63992909
+#
+#     Self  Symbol                                                                                                                                                                                                                                            IPC   [IPC Coverage]
+# ........  ................................................................................................................................................................................................................................................  ....................
+#
+    29.73%  [.] aether::SpscRing<int, 8ul>::try_pop()                                                                                                                                                                                                         -      -            
+            |          
+            |--23.90%--_start
+            |          __libc_start_main
+            |          0x7fabb5827781
+            |          main
+            |          benchmark::RunSpecifiedBenchmarks()
+            |          benchmark::RunSpecifiedBenchmarks(benchmark::BenchmarkReporter*, benchmark::BenchmarkReporter*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >)
+            |          benchmark::internal::(anonymous namespace)::RunBenchmarks(std::vector<benchmark::internal::BenchmarkInstance, std::allocator<benchmark::internal::BenchmarkInstance> > const&, benchmark::BenchmarkReporter*, benchmark::BenchmarkReporter*)
+            |          benchmark::internal::BenchmarkRunner::DoOneRepetition()
+            |          benchmark::internal::BenchmarkRunner::DoNIterations()
+            |          benchmark::internal::(anonymous namespace)::RunInThread(benchmark::internal::BenchmarkInstance const*, long, int, benchmark::internal::ThreadManager*, benchmark::internal::PerfCountersMeasurement*, benchmark::ProfilerManager*)
+            |          benchmark::internal::BenchmarkInstance::Run(long, int, benchmark::internal::ThreadTimer*, benchmark::internal::ThreadManager*, benchmark::internal::PerfCountersMeasurement*, benchmark::ProfilerManager*) const
+            |          benchmark::internal::FunctionBenchmark::Run(benchmark::State&)
+            |          |          
+            |          |--22.39%--BM_RingPingPongLatency(benchmark::State&)
+            |          |          |          
+            |          |           --22.03%--aether::SpscRing<int, 8ul>::try_pop()
+            |          |          
+```
