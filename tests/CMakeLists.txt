@@ -14,7 +14,11 @@ add_executable(checksum_tests
     checksum_test.cpp
 )
 
-foreach(target ring_tests arena_tests uring_net_tests checksum_tests)
+add_executable(backoff_tests
+    backoff_test.cpp
+)
+
+foreach(target ring_tests arena_tests uring_net_tests checksum_tests backoff_tests)
     target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR})
     target_link_libraries(${target} PRIVATE GTest::gtest_main)
 endforeach()
@@ -27,3 +31,4 @@ gtest_discover_tests(ring_tests)
 gtest_discover_tests(arena_tests)
 gtest_discover_tests(uring_net_tests)
 gtest_discover_tests(checksum_tests)
+gtest_discover_tests(backoff_tests)
