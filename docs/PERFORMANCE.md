@@ -66,3 +66,30 @@ Captured 2026-10-14T04:45:07Z.
             |          |           --22.03%--aether::SpscRing<int, 8ul>::try_pop()
             |          |          
 ```
+
+## After backoff tuning (SpinBackoff in ping-pong spin loops)
+
+Captured 2026-10-14T04:45:54Z.
+
+```
+
+ Performance counter stats for './build/bench/ring_bench':
+
+       863,562,289      cpu_atom/cycles/u                                                       (5.18%)
+     3,600,754,994      cpu_core/cycles/u                                                       (97.71%)
+       748,612,897      cpu_atom/instructions/u                                                 (5.18%)
+     3,711,970,797      cpu_core/instructions/u                                                 (97.71%)
+         7,281,706      cpu_atom/cache-references/u                                             (5.18%)
+        23,609,435      cpu_core/cache-references/u                                             (97.71%)
+             1,795      cpu_atom/cache-misses/u                                                 (5.18%)
+            12,153      cpu_core/cache-misses/u                                                 (97.71%)
+           383,415      cpu_atom/branch-misses/u                                                (5.18%)
+         2,320,887      cpu_core/branch-misses/u                                                (97.71%)
+
+       0.758851333 seconds time elapsed
+
+       1.505647000 seconds user
+       0.001983000 seconds sys
+
+
+```

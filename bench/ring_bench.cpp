@@ -1,4 +1,5 @@
 #include "ring/spsc_ring.hpp"
+#include "ring/backoff.hpp"
 #include <benchmark/benchmark.h>
 #include <thread>
 #include <atomic>
@@ -57,8 +58,8 @@ static void BM_RingPingPongLatency(benchmark::State& state) {
     });
 
     for (auto _ : state) {
-        while (!ring_a2b.try_push(1)) { /* spin */ }
-        while (!ring_b2a.try_pop()) { /* spin */ }
+        { aether::SpinBackoff bo; while (!ring_a2b.try_push(1)) bo.spin(); }
+        { aether::SpinBackoff bo; while (!ring_b2a.try_pop()) bo.spin(); }
     }
 
     stop.store(true, std::memory_order_relaxed);
