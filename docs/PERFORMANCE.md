@@ -93,3 +93,12 @@ Captured 2026-10-14T04:45:54Z.
 
 
 ```
+
+## Checksum: added software prefetch
+
+Added a `_mm_prefetch` one cache-line-group (128B) ahead of the
+current AVX2 chunk, to hide main-memory latency behind the current
+iteration's arithmetic on larger packets. Correctness re-verified
+by the existing `checksum_tests` suite (scalar/AVX2 agreement is
+unaffected by prefetching -- it only changes *when* memory is
+pulled into cache, never what is computed).

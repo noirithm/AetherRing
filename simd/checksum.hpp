@@ -39,6 +39,9 @@ inline uint32_t checksum_avx2(std::span<const uint8_t> data) {
     );
 
     for (; i + 32 <= data.size(); i += 32) {
+        if (i + 128 < data.size()) {
+            _mm_prefetch(reinterpret_cast<const char*>(data.data() + i + 128), _MM_HINT_T0);
+        }
         __m256i chunk = _mm256_loadu_si256(
             reinterpret_cast<const __m256i*>(data.data() + i));
         chunk = _mm256_shuffle_epi8(chunk, swap_mask);
