@@ -102,3 +102,30 @@ iteration's arithmetic on larger packets. Correctness re-verified
 by the existing `checksum_tests` suite (scalar/AVX2 agreement is
 unaffected by prefetching -- it only changes *when* memory is
 pulled into cache, never what is computed).
+
+## Final (post-tuning)
+
+Captured 2026-10-14T04:45:58Z.
+
+```
+
+ Performance counter stats for './build/bench/ring_bench':
+
+       965,620,205      cpu_atom/cycles/u                                                       (7.42%)
+     3,972,368,762      cpu_core/cycles/u                                                       (96.63%)
+       733,912,189      cpu_atom/instructions/u                                                 (7.42%)
+     4,010,057,427      cpu_core/instructions/u                                                 (96.63%)
+         7,402,519      cpu_atom/cache-references/u                                             (7.42%)
+        26,058,696      cpu_core/cache-references/u                                             (96.63%)
+               593      cpu_atom/cache-misses/u                                                 (7.42%)
+            12,687      cpu_core/cache-misses/u                                                 (96.63%)
+           456,733      cpu_atom/branch-misses/u                                                (7.42%)
+         2,282,250      cpu_core/branch-misses/u                                                (96.63%)
+
+       0.828252675 seconds time elapsed
+
+       1.641483000 seconds user
+       0.003957000 seconds sys
+
+
+```
