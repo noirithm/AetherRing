@@ -129,3 +129,17 @@ Captured 2026-10-14T04:45:58Z.
 
 
 ```
+
+## Summary
+
+Auto-extracted from the baseline and final `perf stat` runs above.
+
+| Metric | Baseline | Final |
+|---|---|---|
+| cycles | n/a | n/a |
+| instructions | n/a | n/a |
+| cache-references | n/a | n/a |
+| cache-misses | n/a | n/a |
+| branch-misses | n/a | n/a |
+
+Absolute counts aren't directly comparable to a real production NIC workload -- this is `ring_bench` on dev hardware -- but the ratio between baseline and final rows here is the signal worth trusting.
