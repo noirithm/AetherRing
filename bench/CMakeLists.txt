@@ -1,9 +1,7 @@
-add_executable(ring_bench
-    ring_bench.cpp
-)
+add_executable(ring_bench ring_bench.cpp)
+add_executable(checksum_bench checksum_bench.cpp)
 
-target_include_directories(ring_bench PRIVATE ${CMAKE_SOURCE_DIR})
-
-target_link_libraries(ring_bench PRIVATE
-    benchmark::benchmark
-)
+foreach(target ring_bench checksum_bench)
+    target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR})
+    target_link_libraries(${target} PRIVATE benchmark::benchmark)
+endforeach()

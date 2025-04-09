@@ -1,78 +1,85 @@
 # AetherRing
 
-A lock-free, zero-copy packet engine written in C++23, exploring systems programming through atomics, memory ordering, cache efficiency, Linux networking, SIMD, and packet parsing.
+A lock-free packet-processing toolkit in C++23: an SPSC ring buffer, a hugepage arena, io_uring and AF_XDP receive paths, an AVX2 checksum, and a bounds-checked packet parser with a fuzz harness.
 
-## What's in here
+Built as a hands-on exploration of atomics and memory ordering, cache behaviour, Linux networking, SIMD, and defensive parsing. Each component is header-only and independent; there is no end-to-end binary yet (see [Status](#status)).
 
-- **`ring/`** — A lock-free single-producer/single-consumer (SPSC) ring buffer with cache-line-separated indices and acquire/release memory ordering, plus a progressive spin/yield/sleep backoff helper.
-- **`arena/`** — A hugepage-backed memory arena with independent freelists to reduce allocation contention.
-- **`net/`** — Two networking backends:
-  - **io_uring:** Multishot UDP receive with a registered buffer ring, and zero-copy send handling for send and notification completions.
-  - **AF_XDP:** UMEM-backed packet sockets with fill, completion, and RX ring handling, alongside an eBPF program in `ebpf/` for redirecting network traffic.
-- **`simd/`** — An AVX2 checksum implementation with runtime CPU feature detection and a scalar fallback.
-- **`proto/`** — A bounds-checked Ethernet/IPv4/UDP packet parser, tested using a `libFuzzer` harness in `fuzz/`.
+## Components
 
-## Building
+| Directory | What it is |
+|---|---|
+| `ring/` | SPSC ring buffer with cache-line-separated head/tail indices and acquire/release ordering, plus `SpinBackoff` (pause → yield → doubling sleep). |
+| `arena/` | Hugepage-backed memory arena with per-core freelists and thread pinning. |
+| `net/` | **io_uring:** multishot UDP receive with a registered buffer ring, zero-copy send. **AF_XDP:** UMEM-backed socket with fill/completion/RX rings and an eBPF loader. The zero-copy claims apply to these paths. |
+| `ebpf/` | XDP program that redirects packets to an AF_XDP socket via an `XSKMAP`. |
+| `simd/` | Internet-style 16-bit ones'-complement checksum: AVX2 version with runtime CPU detection and a scalar fallback. |
+| `proto/` | Ethernet / IPv4 / UDP parser returning `std::expected`, with a bounds check before every read. |
+| `fuzz/` | libFuzzer harness and seed corpus for the parser. |
+| `tests/`, `bench/` | GoogleTest suites and Google Benchmark suites. |
 
-```bash
-mkdir build
-cd build
-cmake ..
-cmake --build . -j$(nproc)
+## Requirements
+
+- Linux, x86-64 with AVX2 (the build uses `-march=x86-64-v3`)
+- A C++23 compiler (GCC 13+ or Clang 17+) and CMake 3.28+
+- `liburing` **2.8 or newer**, found through `pkg-config` (required; there is no bundled fallback)
+- GoogleTest and Google Benchmark are downloaded automatically by CMake on first configure (network needed)
+- Only for `ebpf/` and the AF_XDP loader, which CMake does not build: `clang`, `libbpf`, and kernel headers
+
+## Build and test
+
+```sh
+cmake -S . -B build
+cmake --build build -j"$(nproc)"
+ctest --test-dir build --output-on-failure
 ```
 
-Dependencies include GoogleTest, Google Benchmark, liburing, and libbpf. These can be discovered through `pkg-config` or fetched through CMake `FetchContent`, depending on the project configuration.
+Add `-DAETHER_TSAN=ON` to the configure step to build with ThreadSanitizer.
 
-## Testing
-
-```bash
-cd build
-ctest --output-on-failure
-```
-
-Test suites cover the ring buffer, memory arena, io_uring networking, checksums, backoff logic, and packet parsing.
-
-Some networking tests require elevated privileges and appropriate kernel support. AF_XDP testing also requires a compatible network interface and suitable driver support.
+The io_uring test needs a kernel with io_uring enabled. AF_XDP has no automated test yet, since it needs a suitable NIC, driver, and privileges.
 
 ## Benchmarks
 
-```bash
-./build/bench/ring_bench
+```sh
+./build/bench/ring_bench        # SPSC throughput and ping-pong latency
+./build/bench/checksum_bench    # scalar vs AVX2, 64 B to 9000 B
 ```
 
-The benchmark suite measures ring-buffer performance and helps evaluate implementation changes.
+Both accept the standard Google Benchmark flags, for example `--benchmark_format=json`. Absolute numbers depend heavily on the CPU, so compare scalar against AVX2 on the same machine rather than across machines. See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for tuning notes.
+
+<!-- Paste your own results here, e.g.:
+| Benchmark | Size | Result |
+|---|---|---|
+| SPSC ring throughput | - | ... M items/s |
+| Checksum scalar | 1500 B | ... GB/s |
+| Checksum AVX2   | 1500 B | ... GB/s |
+CPU / kernel / compiler: ...
+-->
 
 ## Fuzzing
 
-The packet parser (`proto/packet_header.hpp`) has a libFuzzer harness at `fuzz/packet_fuzz.cpp`, built separately with Clang:
+The packet parser is fuzzed with libFuzzer and AddressSanitizer + UBSan. Build it separately with Clang:
 
-```bash
-clang++ -std=c++23 -O1 -g \
-  -fsanitize=fuzzer,address -I. \
-  -o packet_fuzz fuzz/packet_fuzz.cpp
-
-./packet_fuzz -max_total_time=30
+```sh
+clang++ -std=c++23 -O1 -g -fsanitize=fuzzer,address,undefined -I. \
+    -o packet_fuzz fuzz/packet_fuzz.cpp
+./packet_fuzz fuzz/corpus -max_total_time=60
 ```
 
-## Project structure
+A healthy run shows `cov:` growing well past 1 within seconds. The harness also checks that any successfully parsed payload lies inside the input buffer. See [docs/FUZZING.md](docs/FUZZING.md).
 
-```text
-aetherring/
-├── ring/       # SPSC ring buffer and backoff helper
-├── arena/      # Memory arena and freelists
-├── net/        # io_uring and AF_XDP packet paths
-├── ebpf/       # XDP redirect program
-├── simd/       # AVX2 checksum implementation
-├── proto/      # Packet header parser
-├── fuzz/       # libFuzzer harness
-├── tests/      # GoogleTest suites
-├── bench/      # Google Benchmark suites
-├── docker/     # Build environment
-└── docs/       # Project documentation
-```
+## Design notes
+
+- **Ring capacity:** `SpscRing<T, N>` keeps one slot empty to tell full from empty, so it holds `N - 1` items. Items are copied in and out by value.
+- **Memory ordering:** each side reads its own index with `relaxed` and the other side's with `acquire`, and publishes its own with `release`. `head_` and `tail_` sit on separate cache lines to avoid false sharing.
+- **Backoff:** `SpinBackoff` spins with a hardware pause first, then yields, then sleeps with doubling delays up to 1 ms, so an idle consumer doesn't hold a core.
 
 ## Status
 
-AetherRing brings together lock-free data structures, memory management, Linux networking, SIMD optimization, and packet parsing in a single systems-programming project.
+Working and tested: ring, arena, backoff, checksum, parser, io_uring paths.
 
-The implementation includes an SPSC ring buffer, a memory arena, io_uring receive and send paths, AF_XDP packet reception with an eBPF redirect program, an AVX2 checksum implementation, and a fuzz-tested packet parser.
+Known gaps:
+
+- Components are not yet wired into a single end-to-end pipeline or example program.
+- AF_XDP receive and the eBPF loader have no automated test.
+- `SpscRing` uses `%` for wrap-around, so a power-of-two capacity (with a bitmask) would be faster and could be enforced with a `static_assert`.
+- x86-64 / Linux only.

@@ -31,3 +31,4 @@ _deps/
 
 # OS cruft
 .DS_Store
+packet_fuzz
