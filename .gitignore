@@ -32,3 +32,6 @@ _deps/
 # OS cruft
 .DS_Store
 packet_fuzz
+checksum.json
+checksum.json
+build*/
