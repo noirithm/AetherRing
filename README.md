@@ -6,32 +6,30 @@ Built as a hands-on exploration of atomics and memory ordering, cache behaviour,
 
 ## Components
 
-| Directory | What it is |
-|---|---|
-| `ring/` | SPSC ring buffer with cache-line-separated head/tail indices and acquire/release ordering, plus `SpinBackoff` (pause → yield → doubling sleep). |
-| `arena/` | Hugepage-backed memory arena with per-core freelists and thread pinning. |
-| `net/` | **io_uring:** multishot UDP receive with a registered buffer ring, zero-copy send. **AF_XDP:** UMEM-backed socket with fill/completion/RX rings and an eBPF loader. The zero-copy claims apply to these paths. |
-| `ebpf/` | XDP program that redirects packets to an AF_XDP socket via an `XSKMAP`. |
-| `simd/` | Internet-style 16-bit ones'-complement checksum: AVX2 version with runtime CPU detection and a scalar fallback. |
-| `proto/` | Ethernet / IPv4 / UDP parser returning `std::expected`, with a bounds check before every read. |
-| `fuzz/` | libFuzzer harness and seed corpus for the parser. |
-| `tests/`, `bench/` | GoogleTest suites and Google Benchmark suites. |
+| Directory          | What it is                                                                                                                                                                                                         |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ring/`            | SPSC ring buffer with cache-line-separated head/tail indices and acquire/release ordering, plus `SpinBackoff` (pause → yield → doubling sleep).                                                                 |
+| `arena/`           | Hugepage-backed memory arena with per-core freelists and thread pinning.                                                                                                                                         |
+| `net/`             | **io_uring:** multishot UDP receive with a registered buffer ring, zero-copy send. **AF_XDP:** UMEM-backed socket with fill/completion/RX rings and an eBPF loader. The zero-copy claims apply to these paths.   |
+| `ebpf/`            | XDP program that redirects packets to an AF_XDP socket via an `XSKMAP`.                                                                                                                                          |
+| `simd/`            | Internet-style 16-bit ones'-complement checksum: AVX2 version with runtime CPU detection and a scalar fallback.                                                                                                  |
+| `proto/`           | Ethernet / IPv4 / UDP parser returning `std::expected`, with a bounds check before every read.                                                                                                                  |
+| `fuzz/`            | libFuzzer harness and seed corpus for the parser.                                                                                                                                                                |
+| `tests/`, `bench/` | GoogleTest suites and Google Benchmark suites.                                                                                                                                                                   |
 
 ## Requirements
 
 - Linux, x86-64 with AVX2 (the build uses `-march=x86-64-v3`)
 - A C++23 compiler (GCC 13+ or Clang 17+) and CMake 3.28+
-- `liburing` **2.8 or newer**, found through `pkg-config` (required; there is no bundled fallback)
+- `liburing` 2.8 or newer, found through `pkg-config` (required; there is no bundled fallback)
 - GoogleTest and Google Benchmark are downloaded automatically by CMake on first configure (network needed)
 - Only for `ebpf/` and the AF_XDP loader, which CMake does not build: `clang`, `libbpf`, and kernel headers
 
 ## Build and test
 
-```sh
-cmake -S . -B build
-cmake --build build -j"$(nproc)"
-ctest --test-dir build --output-on-failure
-```
+    cmake -S . -B build
+    cmake --build build -j"$(nproc)"
+    ctest --test-dir build --output-on-failure
 
 Add `-DAETHER_TSAN=ON` to the configure step to build with ThreadSanitizer.
 
@@ -39,19 +37,17 @@ The io_uring test needs a kernel with io_uring enabled. AF_XDP has no automated 
 
 ## Benchmarks
 
-```sh
-./build/bench/ring_bench        # SPSC throughput and ping-pong latency
-./build/bench/checksum_bench    # scalar vs AVX2, 64 B to 9000 B
-```
+    ./build/bench/ring_bench        # SPSC throughput and ping-pong latency
+    ./build/bench/checksum_bench    # scalar vs AVX2, 64 B to 9000 B
 
-Both accept the standard Google Benchmark flags, for example `--benchmark_format=json`. Absolute numbers depend heavily on the CPU, so compare scalar against AVX2 on the same machine rather than across machines. See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for tuning notes.
+Both accept the standard Google Benchmark flags, for example `--benchmark_format=json`. Absolute numbers depend heavily on the CPU, so compare scalar against AVX2 on the same machine rather than across machines. See `docs/PERFORMANCE.md` for tuning notes.
 
-| Packet size | Scalar | AVX2 | Speedup |
-|---|---|---|---|
-| 64 B | 8.64 GB/s | 13.80 GB/s | 1.6x |
-| 512 B | 9.73 GB/s | 25.60 GB/s | 2.6x |
-| 1500 B | 9.63 GB/s | 22.58 GB/s | 2.3x |
-| 9000 B | 9.68 GB/s | 25.66 GB/s | 2.7x |
+| Packet size | Scalar    | AVX2       | Speedup |
+| ----------- | --------- | ---------- | ------- |
+| 64 B        | 8.64 GB/s | 13.80 GB/s | 1.6x    |
+| 512 B       | 9.73 GB/s | 25.60 GB/s | 2.6x    |
+| 1500 B      | 9.63 GB/s | 22.58 GB/s | 2.3x    |
+| 9000 B      | 9.68 GB/s | 25.66 GB/s | 2.7x    |
 
 Checksum throughput on a 22-thread CPU at 4.5 GHz, clang-19, Release build. Buffers stay in cache, so these are best-case figures.
 
@@ -59,13 +55,11 @@ Checksum throughput on a 22-thread CPU at 4.5 GHz, clang-19, Release build. Buff
 
 The packet parser is fuzzed with libFuzzer and AddressSanitizer + UBSan. Build it separately with Clang:
 
-```sh
-clang++ -std=c++23 -O1 -g -fsanitize=fuzzer,address,undefined -I. \
-    -o packet_fuzz fuzz/packet_fuzz.cpp
-./packet_fuzz fuzz/corpus -max_total_time=60
-```
+    clang++ -std=c++23 -O1 -g -fsanitize=fuzzer,address,undefined -I. \
+        -o packet_fuzz fuzz/packet_fuzz.cpp
+    ./packet_fuzz fuzz/corpus -max_total_time=60
 
-A healthy run shows `cov:` growing well past 1 within seconds. The harness also checks that any successfully parsed payload lies inside the input buffer. See [docs/FUZZING.md](docs/FUZZING.md).
+A healthy run shows `cov:` growing well past 1 within seconds. The harness also checks that any successfully parsed payload lies inside the input buffer. See `docs/FUZZING.md`.
 
 ## Design notes
 
